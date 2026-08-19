@@ -1,0 +1,154 @@
+package mosaic
+
+import (
+	"embed"
+
+	"github.com/wader/fq/format"
+	"github.com/wader/fq/format/matroska"
+	"github.com/wader/fq/format/matroska/ebml"
+	"github.com/wader/fq/format/mosaic/ebml_mosaic"
+	"github.com/wader/fq/pkg/decode"
+	"github.com/wader/fq/pkg/interp"
+	"github.com/wader/fq/pkg/scalar"
+)
+
+//go:embed mosaic.md
+var mosaicFS embed.FS
+
+func init() {
+	interp.RegisterFormat(
+		format.MOSAIC,
+		&decode.Format{
+			Description: "MOSAIC (MOdular Storage of Archived and Indexed Contents)",
+			Groups:      []*decode.Group{format.Probe},
+			ProbeOrder:  -1, // before matroska (0) so we can check doc_type first
+			DecodeFn:    mosaicDecode,
+		})
+	interp.RegisterFS(mosaicFS)
+}
+
+// vint helpers — re-exported from matroska
+var (
+	decodeRawVint = matroska.DecodeRawVint
+	decodeVint    = matroska.DecodeVint
+)
+
+func decodeMaster(d *decode.D, bitsLimit int64, elm *ebml.Master) {
+	tagEndBit := d.Pos() + bitsLimit
+
+	d.FieldArray("elements", func(d *decode.D) {
+		for d.Pos() < tagEndBit && !d.End() {
+			d.FieldStruct("element", func(d *decode.D) {
+				var childElm ebml.Element
+				childElm = &ebml.Unknown{}
+
+				d.FieldUintFn("id", decodeRawVint, scalar.UintFn(func(s scalar.Uint) (scalar.Uint, error) {
+					n := s.Actual
+					var ok bool
+					childElm, ok = elm.Master[ebml.ID(n)]
+					if !ok {
+						childElm, ok = ebml.Global.Master[ebml.ID(n)]
+						if !ok {
+							childElm = &ebml.Unknown{}
+							return scalar.Uint{Actual: n, DisplayFormat: scalar.NumberHex, Description: "Unknown"}, nil
+						}
+					}
+					return scalar.Uint{
+						Actual:        n,
+						DisplayFormat: scalar.NumberHex,
+						Sym:           childElm.GetName(),
+						Description:   childElm.GetDefinition(),
+					}, nil
+				}))
+				d.FieldValueStr("type", childElm.GetType())
+
+				const maxStringTagSize = 100 * 1024 * 1024
+				tagSize := d.FieldUintFn("size", decodeVint, scalar.UintMapDescription{
+					0xffffffffffffff: "Unknown size",
+				})
+
+				// assert sane tag size
+				// strings are limited because they are read into memory
+				switch childElm.(type) {
+				case *ebml.Integer,
+					*ebml.Uinteger,
+					*ebml.Float:
+					if tagSize > 8 {
+						d.Fatalf("invalid tagSize %d for number type", tagSize)
+					}
+				case *ebml.String,
+					*ebml.UTF8:
+					if tagSize > maxStringTagSize {
+						d.Errorf("tagSize %d > maxStringTagSize %d", tagSize, maxStringTagSize)
+					}
+				case *ebml.Unknown,
+					*ebml.Binary,
+					*ebml.Date,
+					*ebml.Master:
+					// nop
+				}
+
+				switch childElm := childElm.(type) {
+				case *ebml.Unknown:
+					d.FieldRawLen("data", int64(tagSize)*8)
+				case *ebml.Integer:
+					var sm []scalar.SintMapper
+					if childElm.Enums != nil {
+						sm = append(sm, scalar.SintFn(func(s scalar.Sint) (scalar.Sint, error) {
+							if e, ok := childElm.Enums[s.Actual]; ok {
+								s.Sym = e.Name
+								s.Description = e.Description
+							}
+							return s, nil
+						}))
+					}
+					d.FieldS("value", int(tagSize)*8, sm...)
+				case *ebml.Uinteger:
+					var sm []scalar.UintMapper
+					if childElm.Enums != nil {
+						sm = append(sm, scalar.UintFn(func(s scalar.Uint) (scalar.Uint, error) {
+							if e, ok := childElm.Enums[s.Actual]; ok {
+								s.Sym = e.Name
+								s.Description = e.Description
+							}
+							return s, nil
+						}))
+					}
+					d.FieldU("value", int(tagSize)*8, sm...)
+				case *ebml.Float:
+					d.FieldF("value", int(tagSize)*8)
+				case *ebml.String:
+					var sm []scalar.StrMapper
+					sm = append(sm, scalar.StrFn(func(s scalar.Str) (scalar.Str, error) {
+						if e, ok := childElm.Enums[s.Actual]; ok {
+							s.Sym = e.Name
+							s.Description = e.Description
+						}
+						return s, nil
+					}))
+					d.FieldUTF8("value", int(tagSize), sm...)
+				case *ebml.UTF8:
+					d.FieldUTF8NullFixedLen("value", int(tagSize))
+				case *ebml.Date: // that's not expected in MOSAIC
+					d.FieldRawLen("value", int64(tagSize)*8)
+				case *ebml.Binary:
+					d.FieldRawLen("value", int64(tagSize)*8)
+
+				case *ebml.Master:
+					decodeMaster(d, int64(tagSize)*8, childElm)
+				}
+			})
+		}
+	})
+}
+
+func mosaicDecode(d *decode.D) any {
+	ebmlHeaderID := uint64(0x1a45dfa3)
+	if d.PeekUintBits(32) != ebmlHeaderID {
+		d.Fatalf("no EBML header found")
+	}
+
+	decodeMaster(d, d.BitsLeft(), ebml_mosaic.RootElement)
+
+	return nil
+}

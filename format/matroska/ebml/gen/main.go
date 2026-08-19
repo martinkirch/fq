@@ -81,6 +81,7 @@ func findDefintion(docs []Documentation) (string, bool) {
 			s = whitespaceRE.ReplaceAllLiteralString(s, " ")
 			s = quotesRE.ReplaceAllLiteralString(s, "")
 			s = strings.TrimRight(s, " .")
+			s = strings.TrimLeft(s, " ")
 
 			if i := strings.IndexAny(s, ".,;"); i != -1 {
 				s = s[0:i]
@@ -253,7 +254,7 @@ func main() {
 					case "uinteger":
 						n, _ := strconv.ParseUint(e.Value, 0, 64)
 						fmt.Printf("    %d:{", n)
-					case "string":
+					case "string", "utf-8":
 						fmt.Printf("    %q:{", e.Value)
 					}
 
