@@ -21,7 +21,6 @@ func init() {
 		&decode.Format{
 			Description: "MOSAIC (MOdular Storage of Archived and Indexed Contents)",
 			Groups:      []*decode.Group{format.Probe},
-			ProbeOrder:  -1, // before matroska (0) so we can check doc_type first
 			DecodeFn:    mosaicDecode,
 		})
 	interp.RegisterFS(mosaicFS)
@@ -42,7 +41,7 @@ func decodeMaster(d *decode.D, bitsLimit int64, elm *ebml.Master) {
 				var childElm ebml.Element
 				childElm = &ebml.Unknown{}
 
-				d.FieldUintFn("id", decodeRawVint, scalar.UintFn(func(s scalar.Uint) (scalar.Uint, error) {
+				tagID := d.FieldUintFn("id", decodeRawVint, scalar.UintFn(func(s scalar.Uint) (scalar.Uint, error) {
 					n := s.Actual
 					var ok bool
 					childElm, ok = elm.Master[ebml.ID(n)]
@@ -126,7 +125,10 @@ func decodeMaster(d *decode.D, bitsLimit int64, elm *ebml.Master) {
 						}
 						return s, nil
 					}))
-					d.FieldUTF8("value", int(tagSize), sm...)
+					v := d.FieldUTF8("value", int(tagSize), sm...)
+					if tagID == ebml.DocTypeID && v != "mosaic" {
+						d.Errorf("EBML doctype is not mosaic")
+					}
 				case *ebml.UTF8:
 					d.FieldUTF8NullFixedLen("value", int(tagSize))
 				case *ebml.Date: // that's not expected in MOSAIC

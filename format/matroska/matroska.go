@@ -383,6 +383,9 @@ func decodeMaster(d *decode.D, bitsLimit int64, elm *ebml.Master, unknownSize bo
 					if dc.currentTrack != nil && tagID == ebml_matroska.CodecIDID {
 						dc.currentTrack.codec = v
 					}
+					if tagID == ebml.DocTypeID && v != "matroska" {
+						d.Errorf("EBML doctype is not matroska")
+					}
 				case *ebml.UTF8:
 					d.FieldUTF8NullFixedLen("value", int(tagSize))
 				case *ebml.Date:
