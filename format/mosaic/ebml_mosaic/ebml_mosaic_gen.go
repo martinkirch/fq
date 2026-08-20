@@ -7,9 +7,10 @@ import (
 
 var RootElement = &ebml.Master{
 	ElementType: ebml.ElementType{
-		ID:       RootID,
-		ParentID: -1,
-		Name:     "",
+		ID:        RootID,
+		ParentID:  -1,
+		Name:      "",
+		Singleton: true,
 	},
 	Master: map[ebml.ID]ebml.Element{
 		ebml.HeaderID: ebml.Header,
@@ -79,6 +80,7 @@ var ObjectsCounterElement = &ebml.Uinteger{
 		ID:         ObjectsCounterID,
 		ParentID:   ContainerMetaDataID,
 		Name:       "objects_counter",
+		Singleton:  true,
 		Definition: "Total number of objects in the document",
 	},
 }
@@ -87,6 +89,7 @@ var ObjectsTotalSizeElement = &ebml.Uinteger{
 		ID:         ObjectsTotalSizeID,
 		ParentID:   ContainerMetaDataID,
 		Name:       "objects_total_size",
+		Singleton:  true,
 		Definition: "Total size of (uncompressed) objects in the document",
 	},
 }
@@ -95,6 +98,7 @@ var CompressionMethodElement = &ebml.String{
 		ID:         CompressionMethodID,
 		ParentID:   ContainerMetaDataID,
 		Name:       "compression_method",
+		Singleton:  true,
 		Definition: "Name of the algorithm that should be used to decompress objects",
 	},
 	Enums: map[string]ebml.Enum{
@@ -108,6 +112,7 @@ var CompressionDataElement = &ebml.Binary{
 		ID:         CompressionDataID,
 		ParentID:   ContainerMetaDataID,
 		Name:       "compression_data",
+		Singleton:  true,
 		Definition: "Decompression-specific data",
 	},
 }
@@ -116,6 +121,7 @@ var CommentElement = &ebml.UTF8{
 		ID:         CommentID,
 		ParentID:   ContainerMetaDataID,
 		Name:       "comment",
+		Singleton:  false,
 		Definition: "An arbitrary-length presentation of the file",
 	},
 }
@@ -124,6 +130,7 @@ var EndOfTilesOffsetElement = &ebml.Uinteger{
 		ID:         EndOfTilesOffsetID,
 		ParentID:   ContainerMetaDataID,
 		Name:       "end_of_tiles_offset",
+		Singleton:  true,
 		Definition: "Offset of the first top element after ContainerMetaData that is not a Tile",
 	},
 }
@@ -144,6 +151,7 @@ var ObjectElement = &ebml.Binary{
 		ID:         ObjectID,
 		ParentID:   TileID,
 		Name:       "object",
+		Singleton:  false,
 		Definition: "A single object",
 	},
 }
@@ -168,6 +176,7 @@ var IdxDescriptionElement = &ebml.String{
 		ID:         IdxDescriptionID,
 		ParentID:   IndexID,
 		Name:       "idx_description",
+		Singleton:  true,
 		Definition: "Description of this index' key semantics and its map format",
 	},
 	Enums: map[string]ebml.Enum{
@@ -182,6 +191,7 @@ var IdxUnrolledEntrySizeElement = &ebml.Uinteger{
 		ID:         IdxUnrolledEntrySizeID,
 		ParentID:   IndexID,
 		Name:       "idx_unrolled_entry_size",
+		Singleton:  true,
 		Definition: "If the mapping technique assumes that index entries have a fixed size",
 	},
 }
@@ -204,6 +214,7 @@ var KeyElement = &ebml.Binary{
 		ID:         KeyID,
 		ParentID:   IdxUnrolledID,
 		Name:       "key",
+		Singleton:  false,
 		Definition: "Key for an index entry",
 	},
 }
@@ -212,6 +223,7 @@ var OffsetElement = &ebml.Uinteger{
 		ID:         OffsetID,
 		ParentID:   IdxUnrolledID,
 		Name:       "offset",
+		Singleton:  false,
 		Definition: "Offset in file for an index entry",
 	},
 }
@@ -220,6 +232,7 @@ var GoToConflictsElement = &ebml.Binary{
 		ID:         GoToConflictsID,
 		ParentID:   IdxUnrolledID,
 		Name:       "go_to_conflicts",
+		Singleton:  false,
 		Definition: "This element should replace an Offset when an key is associated to more than one object",
 	},
 }
@@ -240,6 +253,7 @@ var MapElement = &ebml.Binary{
 		ID:         MapID,
 		ParentID:   MapContainerID,
 		Name:       "map",
+		Singleton:  true,
 		Definition: "An efficient mapping technique of keys to their position in the index or in payload",
 	},
 }
@@ -273,6 +287,7 @@ var ConflictingKeyElement = &ebml.Binary{
 		ID:         ConflictingKeyID,
 		ParentID:   ConflictID,
 		Name:       "conflicting_key",
+		Singleton:  true,
 		Definition: "The conflicting key",
 	},
 }
@@ -281,6 +296,7 @@ var ConflictingOffsetElement = &ebml.Uinteger{
 		ID:         ConflictingOffsetID,
 		ParentID:   ConflictID,
 		Name:       "conflicting_offset",
+		Singleton:  false,
 		Definition: "One of the possible offsets for the conflicting key",
 	},
 }
