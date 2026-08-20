@@ -191,20 +191,22 @@ func (m *Master) LookupByID(id ID) (Element, bool) {
 }
 
 // resolves an EBML tag ID against the master map.
-func (m *Master) MatchElement(out *Element) scalar.UintFn {
+func (m *Master) MatchElement(d *decode.D, out *Element) uint64 {
+	n := PeekRawVint(d)
+	var ok bool
+	*out, ok = m.LookupByID(ID(n))
+	if !ok {
+		*out = &Unknown{}
+	}
+	return n
+}
+
+// returns a scalar.UintMapper for EBML tag IDs
+func ElementIDMapper(e Element) scalar.UintMapper {
 	return scalar.UintFn(func(s scalar.Uint) (scalar.Uint, error) {
-		n := s.Actual
-		var ok bool
-		*out, ok = m.LookupByID(ID(n))
-		if !ok {
-			*out = &Unknown{}
-			return scalar.Uint{Actual: n, DisplayFormat: scalar.NumberHex, Description: "Unknown"}, nil
-		}
-		return scalar.Uint{
-			Actual:        n,
-			DisplayFormat: scalar.NumberHex,
-			Sym:           (*out).GetName(),
-			Description:   (*out).GetDefinition(),
-		}, nil
+		s.DisplayFormat = scalar.NumberHex
+		s.Sym = e.GetName()
+		s.Description = e.GetDefinition()
+		return s, nil
 	})
 }

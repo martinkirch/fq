@@ -30,9 +30,10 @@ func decodeMaster(d *decode.D, bitsLimit int64, elm *ebml.Master) {
 
 	d.FieldArray("elements", func(d *decode.D) {
 		for d.Pos() < tagEndBit && !d.End() {
-			d.FieldStruct("element", func(d *decode.D) {
-				var childElm ebml.Element
-				tagID := d.FieldUintFn("id", ebml.DecodeRawVint, elm.MatchElement(&childElm))
+			var childElm ebml.Element
+			elm.MatchElement(d, &childElm)
+			d.FieldStruct(childElm.GetName(), func(d *decode.D) {
+				tagID := d.FieldUintFn("id", ebml.DecodeRawVint, ebml.ElementIDMapper(childElm))
 				d.FieldValueStr("type", childElm.GetType())
 
 				const maxStringTagSize = 100 * 1024 * 1024
