@@ -1,6 +1,11 @@
 package ebml
 
-import "time"
+import (
+	"time"
+
+	"github.com/wader/fq/pkg/decode"
+	"github.com/wader/fq/pkg/scalar"
+)
 
 // 2001-01-01T00:00:00.000000000 UTC
 var EpochDate = time.Date(2001, time.January, 1, 0, 0, 0, 0, time.UTC)
@@ -127,6 +132,38 @@ var Header = &Master{
 	},
 }
 
+// decodes an EBML VINT and returns its value and the number of bytes consumed.
+func DecodeRawVintWidth(d *decode.D) (uint64, int) {
+	n := d.U8()
+	w := 1
+	for i := 0; i <= 7 && (n&(1<<(7-i))) == 0; i++ {
+		w++
+	}
+	for i := 1; i < w; i++ {
+		n = n<<8 | d.U8()
+	}
+	return n, w
+}
+
+// decodes an EBML VINT and returns its value.
+func DecodeRawVint(d *decode.D) uint64 {
+	n, _ := DecodeRawVintWidth(d)
+	return n
+}
+
+// peeks at the next EBML VINT without consuming it.
+func PeekRawVint(d *decode.D) uint64 {
+	n, w := DecodeRawVintWidth(d)
+	d.SeekRel(int64(-w) * 8)
+	return n
+}
+
+func DecodeVint(d *decode.D) uint64 {
+	n, w := DecodeRawVintWidth(d)
+	m := (uint64(1<<((w-1)*8+(8-w))) - 1)
+	return n & m
+}
+
 // FindParentID find id walking parents of startID
 func FindParentID(idToElement map[ID]Element, startID ID, id ID) (Element, bool) {
 	current := idToElement[startID]
@@ -141,4 +178,33 @@ func FindParentID(idToElement map[ID]Element, startID ID, id ID) (Element, bool)
 		}
 	}
 	return nil, false
+}
+
+func (m *Master) LookupByID(id ID) (Element, bool) {
+	if e, ok := m.Master[id]; ok {
+		return e, true
+	}
+	if e, ok := Global.Master[id]; ok {
+		return e, true
+	}
+	return nil, false
+}
+
+// resolves an EBML tag ID against the master map.
+func (m *Master) MatchElement(out *Element) scalar.UintFn {
+	return scalar.UintFn(func(s scalar.Uint) (scalar.Uint, error) {
+		n := s.Actual
+		var ok bool
+		*out, ok = m.LookupByID(ID(n))
+		if !ok {
+			*out = &Unknown{}
+			return scalar.Uint{Actual: n, DisplayFormat: scalar.NumberHex, Description: "Unknown"}, nil
+		}
+		return scalar.Uint{
+			Actual:        n,
+			DisplayFormat: scalar.NumberHex,
+			Sym:           (*out).GetName(),
+			Description:   (*out).GetDefinition(),
+		}, nil
+	})
 }

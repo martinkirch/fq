@@ -4,7 +4,6 @@ import (
 	"embed"
 
 	"github.com/wader/fq/format"
-	"github.com/wader/fq/format/matroska"
 	"github.com/wader/fq/format/matroska/ebml"
 	"github.com/wader/fq/format/mosaic/ebml_mosaic"
 	"github.com/wader/fq/pkg/decode"
@@ -26,12 +25,6 @@ func init() {
 	interp.RegisterFS(mosaicFS)
 }
 
-// vint helpers — re-exported from matroska
-var (
-	decodeRawVint = matroska.DecodeRawVint
-	decodeVint    = matroska.DecodeVint
-)
-
 func decodeMaster(d *decode.D, bitsLimit int64, elm *ebml.Master) {
 	tagEndBit := d.Pos() + bitsLimit
 
@@ -39,30 +32,11 @@ func decodeMaster(d *decode.D, bitsLimit int64, elm *ebml.Master) {
 		for d.Pos() < tagEndBit && !d.End() {
 			d.FieldStruct("element", func(d *decode.D) {
 				var childElm ebml.Element
-				childElm = &ebml.Unknown{}
-
-				tagID := d.FieldUintFn("id", decodeRawVint, scalar.UintFn(func(s scalar.Uint) (scalar.Uint, error) {
-					n := s.Actual
-					var ok bool
-					childElm, ok = elm.Master[ebml.ID(n)]
-					if !ok {
-						childElm, ok = ebml.Global.Master[ebml.ID(n)]
-						if !ok {
-							childElm = &ebml.Unknown{}
-							return scalar.Uint{Actual: n, DisplayFormat: scalar.NumberHex, Description: "Unknown"}, nil
-						}
-					}
-					return scalar.Uint{
-						Actual:        n,
-						DisplayFormat: scalar.NumberHex,
-						Sym:           childElm.GetName(),
-						Description:   childElm.GetDefinition(),
-					}, nil
-				}))
+				tagID := d.FieldUintFn("id", ebml.DecodeRawVint, elm.MatchElement(&childElm))
 				d.FieldValueStr("type", childElm.GetType())
 
 				const maxStringTagSize = 100 * 1024 * 1024
-				tagSize := d.FieldUintFn("size", decodeVint, scalar.UintMapDescription{
+				tagSize := d.FieldUintFn("size", ebml.DecodeVint, scalar.UintMapDescription{
 					0xffffffffffffff: "Unknown size",
 				})
 
