@@ -191,6 +191,7 @@ func main() {
 			fmt.Printf("    ParentID: RootID,\n")
 		}
 		fmt.Printf("    Name: %q,\n", camelToSnake(e.Name))
+		fmt.Printf("    Singleton: %t,\n", e.MaxOccurs == "1")
 		if def, defOk := findDefintion(e.Documentations); defOk {
 			fmt.Printf("    Definition: %q,\n", newLineRE.ReplaceAllString(def, " "))
 		}

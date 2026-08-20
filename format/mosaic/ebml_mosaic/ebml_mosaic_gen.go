@@ -50,6 +50,7 @@ var MosaicElement = &ebml.Master{
 		ID:         MosaicID,
 		ParentID:   RootID,
 		Name:       "mosaic",
+		Singleton:  true,
 		Definition: "MOSAIC root element",
 	},
 	Master: map[ebml.ID]ebml.Element{
@@ -64,6 +65,7 @@ var ContainerMetaDataElement = &ebml.Master{
 		ID:         ContainerMetaDataID,
 		ParentID:   MosaicID,
 		Name:       "container_meta_data",
+		Singleton:  true,
 		Definition: "Document description",
 	},
 	Master: map[ebml.ID]ebml.Element{
@@ -140,6 +142,7 @@ var TileElement = &ebml.Master{
 		ID:         TileID,
 		ParentID:   MosaicID,
 		Name:       "tile",
+		Singleton:  false,
 		Definition: "Objects should be dispatched in smaller tile and each tile should contain a CRC32 element",
 	},
 	Master: map[ebml.ID]ebml.Element{
@@ -161,6 +164,7 @@ var IndexElement = &ebml.Master{
 		ID:         IndexID,
 		ParentID:   MosaicID,
 		Name:       "index",
+		Singleton:  false,
 		Definition: "Index for fast lookup of objects",
 	},
 	Master: map[ebml.ID]ebml.Element{
@@ -201,6 +205,7 @@ var IdxUnrolledElement = &ebml.Master{
 		ID:         IdxUnrolledID,
 		ParentID:   IndexID,
 		Name:       "idx_unrolled",
+		Singleton:  true,
 		Definition: "Unrolled index entries: all (Key",
 	},
 	Master: map[ebml.ID]ebml.Element{
@@ -242,6 +247,7 @@ var MapContainerElement = &ebml.Master{
 		ID:         MapContainerID,
 		ParentID:   IndexID,
 		Name:       "map_container",
+		Singleton:  true,
 		Definition: "This wrapper element allow us to put a CRC32 before the serialized Map",
 	},
 	Master: map[ebml.ID]ebml.Element{
@@ -263,6 +269,7 @@ var ConflictsElement = &ebml.Master{
 		ID:         ConflictsID,
 		ParentID:   IndexID,
 		Name:       "conflicts",
+		Singleton:  false,
 		Definition: "This element enumerates key conflicts",
 	},
 	Master: map[ebml.ID]ebml.Element{
@@ -275,6 +282,7 @@ var ConflictElement = &ebml.Master{
 		ID:         ConflictID,
 		ParentID:   ConflictsID,
 		Name:       "conflict",
+		Singleton:  false,
 		Definition: "A single key conflict",
 	},
 	Master: map[ebml.ID]ebml.Element{

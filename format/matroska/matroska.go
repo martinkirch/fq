@@ -251,6 +251,7 @@ func decodeMaster(d *decode.D, bitsLimit int64, elm *ebml.Master, unknownSize bo
 
 			var childElm ebml.Element
 			elm.MatchElement(d, &childElm)
+			// TODO: update tests because this is a behavior change: no more .element in paths
 			d.FieldStruct(childElm.GetName(), func(d *decode.D) {
 				tagID := d.FieldUintFn("id", ebml.DecodeRawVint, ebml.ElementIDMapper(childElm))
 				d.FieldValueStr("type", childElm.GetType())
